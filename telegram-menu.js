@@ -3,9 +3,14 @@ const balanceButton = {
     callback_data: 'GET_BALANCES'
 }
 
-const currenciesInOrderButton = {
-    text: 'Get prices of "in order" symbols',
-    callback_data: 'GET_PRICES_IN_ORDER_CURRENCIES'
+const currentEarningsButton = {
+    text: 'Get the current earnings',
+    callback_data: 'GET_CURRENT_EARNINGS'
+}
+
+const currentDetailedEarningsButton = {
+    text: 'Get detailed the current earnings',
+    callback_data: 'GET_DETAILED_CURRENT_EARNINGS'
 }
 
 const getOrdersButton = {
@@ -15,6 +20,6 @@ const getOrdersButton = {
 
 module.exports = [
     [balanceButton],
-    [currenciesInOrderButton],
+    [currentEarningsButton, currentDetailedEarningsButton],
     [getOrdersButton]
 ];

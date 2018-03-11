@@ -12,69 +12,134 @@ binance.options({
 
 module.exports = {
     GET_BALANCES: getBinanceBalances,
-    GET_PRICES_IN_ORDER_CURRENCIES: getPricesOfInOrderCurrencies,
+    GET_CURRENT_EARNINGS: getСurrentEarnings,
+    GET_DETAILED_CURRENT_EARNINGS: getСurrentEarnings.bind(this, true),
     GET_ACTIVE_ORDERS: getActiveOrders
 }
 
 function getBinanceBalances() {
-    return new Promise((resolve) => {
-        binance.balance((error, balances) => {
+    return _getBalance()
+        .then((balances) => {
             let result = '';
 
             Object.keys(balances).forEach((currencyCode) => {
                 const currency = balances[currencyCode];
 
                 if (+currency.available || +currency.onOrder) {
-                    result += `${currencyCode}: Av.: ${currency.available} OnOr.: ${currency.onOrder}\n`;
+                    result += `${currencyCode}: Av.: ${Number(currency.available)} OnOr.: ${Number(currency.onOrder)}\n`;
                 }
             });
 
-            resolve(result);
+            return result;
         });
-    });
 }
 
-function getPricesOfInOrderCurrencies() {
-    return new Promise((resolve) => {
-        binance.balance((error, balances) => {
-            let inOrderCurrencies = new Set();
-            let result = '';
+function getСurrentEarnings(detailed) {
+    let inOrderCurrencies = new Set();
+    let latestPrices;
 
-            binance.openOrders(false, (error, openOrders) => {
-                openOrders.forEach((currency) => {
-                    inOrderCurrencies.add(currency.symbol);
-                });
-
-                binance.prices((error, ticker) => {
-                    inOrderCurrencies.forEach((currencyCode) => {
-                        if (ticker[currencyCode]) {
-                            const price = Number(ticker[currencyCode]);
-
-                            result += `${currencyCode}: Price: ${price}\n`;
-                        }
-                    });
-
-                    resolve(result);
-                });
+    return _getOpenOrders()
+        .then((openOrders) => {
+            openOrders.forEach((currency) => {
+                inOrderCurrencies.add(currency.symbol);
             });
 
+            return _getLatestPrices();
+        })
+        .then((ticker) => {
+            latestPrices = ticker;
+
+            const tradeHistoriesPromises = Array.from(inOrderCurrencies).map((currencyCode) => {
+                return _getTradeHistoryBySymbol(currencyCode);
+            });
+
+            return Promise.all(tradeHistoriesPromises);
+        })
+        .then((tradeHistories) => {
+            let result = '';
+
+            inOrderCurrencies.forEach((currencyCode) => {
+                if (latestPrices[currencyCode]) {
+                    const currentPrice = Number(latestPrices[currencyCode]);
+
+                    const tradeHistory = tradeHistories.find((history) => history.symbol === currencyCode);
+                    const purchasePrice = Number(tradeHistory.trades.pop().price);
+
+                    const delta = (currentPrice - purchasePrice) / purchasePrice * 100;
+
+                    result += detailed
+                        ? `${currencyCode}: PurchasePrice: ${purchasePrice}: CurrentPrice: ${currentPrice}: Δ: ${delta.toFixed(2)}%\n`
+                        : `${currencyCode}: Δ: ${delta.toFixed(1)}%\n`;
+                }
+            });
+
+            return result;
         });
-    });
 }
 
 function getActiveOrders() {
-    return new Promise((resolve) => {
-        let result = '';
+    return _getOpenOrders()
+        .then((openOrders) => {
+            let result = '';
 
-        binance.openOrders(false, (error, openOrders) => {
             openOrders.forEach((order) => {
                 const price = Number(order.price);
                 const quantity = Number(order.origQty);
 
                 result += `${order.symbol} ${order.side} Qty: ${quantity} Price: ${price}\n`;
-            })
+            });
 
-            resolve(result);
+            return result;
+        });
+}
+
+function _getOpenOrders() {
+    return new Promise((resolve, rejection) => {
+        binance.openOrders(false, (error, openOrders) => {
+            if (error) {
+                rejection(error);
+                return;
+            }
+            resolve(openOrders);
+        });
+    });
+}
+
+function _getLatestPrices() {
+    return new Promise((resolve, rejection) => {
+        binance.prices((error, ticker) => {
+            if (error) {
+                rejection(error);
+                return;
+            }
+            resolve(ticker);
+        });
+    });
+}
+
+function _getTradeHistoryBySymbol(currencyCode) {
+    return new Promise((resolve, rejection) => {
+        binance.trades(currencyCode, (error, trades, symbol) => {
+            if (error) {
+                rejection(error);
+                return;
+            }
+            resolve({
+                symbol,
+                trades
+            });
+        });
+    });
+}
+
+function _getBalance() {
+    return new Promise((resolve, rejection) => {
+        binance.balance((error, balances) => {
+            if (error) {
+                rejection(error);
+                return;
+            }
+            resolve(balances);
         });
     });
 }

@@ -6,6 +6,8 @@ const TelegramBot = require('node-telegram-bot-api');
 const telegramMenu = require('./telegram-menu');
 const binanceService = require('./binance-service');
 
+require('./server');
+
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });

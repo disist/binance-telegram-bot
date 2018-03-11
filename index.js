@@ -33,7 +33,7 @@ bot.on('callback_query', (query) => {
 
     queryPromise()
         .then((result) => bot.sendMessage(chatId, result))
-        .then(() => bot.answerCallbackQuery({ callback_query_id: query.id }));
+        .then(() => bot.answerCallbackQuery(query.id));
 });
 
 bot.on('polling_error', (error) => {

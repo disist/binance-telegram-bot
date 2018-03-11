@@ -12,7 +12,8 @@ binance.options({
 
 module.exports = {
     GET_BALANCES: getBinanceBalances,
-    GET_PRICES_IN_ORDER_CURRENCIES: getPricesOfInOrderCurrencies
+    GET_PRICES_IN_ORDER_CURRENCIES: getPricesOfInOrderCurrencies,
+    GET_ACTIVE_ORDERS: getActiveOrders
 }
 
 function getBinanceBalances() {
@@ -47,7 +48,9 @@ function getPricesOfInOrderCurrencies() {
                 binance.prices((error, ticker) => {
                     inOrderCurrencies.forEach((currencyCode) => {
                         if (ticker[currencyCode]) {
-                            result += `${currencyCode.padEnd(8)}: Price: ${ticker[currencyCode]}\n`;
+                            const price = Number(ticker[currencyCode]);
+
+                            result += `${currencyCode}: Price: ${price}\n`;
                         }
                     });
 
@@ -55,6 +58,23 @@ function getPricesOfInOrderCurrencies() {
                 });
             });
 
+        });
+    });
+}
+
+function getActiveOrders() {
+    return new Promise((resolve) => {
+        let result = '';
+
+        binance.openOrders(false, (error, openOrders) => {
+            openOrders.forEach((order) => {
+                const price = Number(order.price);
+                const quantity = Number(order.origQty);
+
+                result += `${order.symbol} ${order.side} Qty: ${quantity} Price: ${price}\n`;
+            })
+
+            resolve(result);
         });
     });
 }

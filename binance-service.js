@@ -6,7 +6,7 @@ const BINANCE_API_SECRET = process.env.BINANCE_API_SECRET;
 binance.options({
     APIKEY: BINANCE_API_KEY,
     APISECRET: BINANCE_API_SECRET,
-    useServerTime: true, // If you get timestamp errors, synchronize to server time at startup
+    useServerTime: true,
     test: true // If you want to use sandbox mode where orders are simulated
 });
 

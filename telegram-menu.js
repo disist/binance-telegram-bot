@@ -18,8 +18,14 @@ const getOrdersButton = {
     callback_data: 'GET_ACTIVE_ORDERS'
 }
 
+const processBuySignal = {
+    text: 'Process buy signal',
+    callback_data: 'BUY_SIGNAL'
+}
+
 module.exports = [
     [balanceButton],
     [currentEarningsButton, currentDetailedEarningsButton],
-    [getOrdersButton]
+    [getOrdersButton],
+    [processBuySignal]
 ];

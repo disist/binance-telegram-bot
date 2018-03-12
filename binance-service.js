@@ -8,7 +8,7 @@ binance.options({
     APIKEY: BINANCE_API_KEY,
     APISECRET: BINANCE_API_SECRET,
     useServerTime: true,
-    test: true // If you want to use sandbox mode where orders are simulated
+    test: false // If you want to use sandbox mode where orders are simulated
 });
 
 module.exports = {

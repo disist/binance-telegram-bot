@@ -1,12 +1,12 @@
-const telegramService = require('./telegram-service');
-const binanceService = require('./binance-service');
+const telegramService = require('./telegram/telegram-service');
+const binanceService = require('./binance/binance-service');
 
 require('./server');
 
 telegramService.subscribeForCommand((commandName, chatId) => {
 
     if (!binanceService[commandName]) {
-        throw(`>> the command "${query.data} is not exists"`);
+        throw(`>> the command "${commandName}" is not exists`);
     }
 
     const queryPromise = binanceService[commandName];

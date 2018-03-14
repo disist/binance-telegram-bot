@@ -1,15 +1,5 @@
-const binance = require('node-binance-api');
-const telegramService = require('./telegram-service');
-
-const BINANCE_API_KEY = process.env.BINANCE_API_KEY;
-const BINANCE_API_SECRET = process.env.BINANCE_API_SECRET;
-
-binance.options({
-    APIKEY: BINANCE_API_KEY,
-    APISECRET: BINANCE_API_SECRET,
-    useServerTime: true,
-    test: false // If you want to use sandbox mode where orders are simulated
-});
+const telegramService = require('../telegram/telegram-service');
+const binance = require('./binance-api-wrapper');
 
 module.exports = {
     GET_BALANCES: getBinanceBalances,
@@ -20,7 +10,7 @@ module.exports = {
 }
 
 function getBinanceBalances() {
-    return _getBalance()
+    return binance.getBalance()
         .then((balances) => {
             let result = '';
 
@@ -40,19 +30,19 @@ function getСurrentEarnings(chatId, detailed) {
     let inOrderCurrencies = new Set();
     let latestPrices;
 
-    return _getOpenOrders()
+    return binance.getOpenOrders()
         .then((openOrders) => {
             openOrders.forEach((currency) => {
                 inOrderCurrencies.add(currency.symbol);
             });
 
-            return _getLatestPrices();
+            return binance.getLatestPrices();
         })
         .then((ticker) => {
             latestPrices = ticker;
 
             const tradeHistoriesPromises = Array.from(inOrderCurrencies).map((currencyCode) => {
-                return _getTradeHistoryBySymbol(currencyCode);
+                return binance.getTradeHistoryBySymbol(currencyCode);
             });
 
             return Promise.all(tradeHistoriesPromises);
@@ -100,7 +90,7 @@ function getСurrentEarnings(chatId, detailed) {
 }
 
 function getActiveOrders() {
-    return _getOpenOrders()
+    return binance.getOpenOrders()
         .then((openOrders) => {
             let result = '';
 
@@ -123,7 +113,7 @@ function placeBuySignal(chatId) {
 
     let takeProfitLevels = [];
 
-    return _getBalance()
+    return binance.getBalance()
         .then((balances) => {
             // Return available BTC balance
             return Number(balances.BTC.available);
@@ -140,20 +130,20 @@ function placeBuySignal(chatId) {
             signalSymbol = symbol.replace('BTC', '');
             signalSymbolWithBTC = signalSymbol + 'BTC';
 
-            return _getTakeProfitLevels(chatId);
+            return binance.getTakeProfitLevels(chatId);
         })
         .then((levels) => {
             takeProfitLevels = levels;
 
-            return _getLatestPriceForSymbol(signalSymbolWithBTC);
+            return binance.getLatestPriceForSymbol(signalSymbolWithBTC);
         })
         .then((latestPrice) => {
             const estimatedSymbolQty = _normalizeQty(ONE_ORDER_BTC_QTY / latestPrice);
             console.log('>> estimatedSymbolQty', estimatedSymbolQty);
 
-            return _marketBuy(signalSymbolWithBTC, estimatedSymbolQty);
+            return binance.marketBuy(signalSymbolWithBTC, estimatedSymbolQty);
         })
-        .then(() => _getBalance())
+        .then(() => binance.getBalance())
         .then((balances) => {
             const symbolQty = balances[signalSymbol].available;
             console.log('>> real symbolQty', symbolQty);
@@ -162,27 +152,27 @@ function placeBuySignal(chatId) {
             // For 4 orders schema: 30% - 30% - 30% - 10%
             if (takeProfitLevels.length === 4) {
                 takeProfitOrders = [
-                    _limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.3), takeProfitLevels[0]),
-                    _limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.3), takeProfitLevels[1]),
-                    _limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.3), takeProfitLevels[2]),
-                    _limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.1), takeProfitLevels[3])
+                    binance.limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.3), takeProfitLevels[0]),
+                    binance.limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.3), takeProfitLevels[1]),
+                    binance.limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.3), takeProfitLevels[2]),
+                    binance.limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.1), takeProfitLevels[3])
                 ];
             }
 
             // For 3 orders schema: 40% - 30% - 30%
             if (takeProfitLevels.length === 3) {
                 takeProfitOrders = [
-                    _limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.4), takeProfitLevels[0]),
-                    _limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.3), takeProfitLevels[1]),
-                    _limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.3), takeProfitLevels[2])
+                    binance.limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.4), takeProfitLevels[0]),
+                    binance.limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.3), takeProfitLevels[1]),
+                    binance.limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.3), takeProfitLevels[2])
                 ];
             }
 
             // For 2 orders schema: 60% - 40%
             if (takeProfitLevels.length === 2) {
                 takeProfitOrders = [
-                    _limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.6), takeProfitLevels[0]),
-                    _limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.4), takeProfitLevels[1])
+                    binance.limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.6), takeProfitLevels[0]),
+                    binance.limitSell(signalSymbolWithBTC, _normalizeQty(symbolQty * 0.4), takeProfitLevels[1])
                 ];
             }
 
@@ -230,93 +220,4 @@ function _normalizeQty(quantity) {
     quantity = Number(quantity.toFixed(5));
 
     return quantity;
-}
-
-// Binance API promise wrappers
-
-function _getOpenOrders() {
-    return new Promise((resolve, rejection) => {
-        binance.openOrders(false, (error, openOrders) => {
-            if (error) {
-                rejection(error);
-                return;
-            }
-            resolve(openOrders);
-        });
-    });
-}
-
-function _getLatestPrices() {
-    return new Promise((resolve, rejection) => {
-        binance.prices((error, ticker) => {
-            if (error) {
-                rejection(error);
-                return;
-            }
-            resolve(ticker);
-        });
-    });
-}
-
-function _getLatestPriceForSymbol(symbol) {
-    return new Promise((resolve, rejection) => {
-        binance.prices(symbol, (error, ticker) => {
-            if (error) {
-                rejection(error);
-                return;
-            }
-            resolve(ticker[symbol]);
-        });
-    });
-}
-
-function _getTradeHistoryBySymbol(currencyCode) {
-    return new Promise((resolve, rejection) => {
-        binance.trades(currencyCode, (error, trades, symbol) => {
-            if (error) {
-                rejection(error);
-                return;
-            }
-            resolve({
-                symbol,
-                trades
-            });
-        });
-    });
-}
-
-function _getBalance() {
-    return new Promise((resolve, rejection) => {
-        binance.balance((error, balances) => {
-            if (error) {
-                rejection(error);
-                return;
-            }
-            resolve(balances);
-        });
-    });
-}
-
-function _marketBuy(symbol, quantity) {
-    return new Promise((resolve, rejection) => {
-        binance.marketBuy(symbol, quantity, (error, response) => {
-            if (error) {
-                rejection(error.body);
-                return;
-            }
-            resolve(response);
-        });
-    });
-}
-
-function _limitSell(symbol, quantity, price) {
-    return new Promise((resolve, rejection) => {
-        binance.sell(symbol, quantity, price, { type: 'LIMIT' }, (error, response) => {
-            if (error) {
-                rejection(error.body);
-                return;
-            }
-            resolve(response);
-        });
-    });
 }

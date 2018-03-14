@@ -3,6 +3,7 @@ const binance = require('node-binance-api');
 const BINANCE_API_KEY = process.env.BINANCE_API_KEY;
 const BINANCE_API_SECRET = process.env.BINANCE_API_SECRET;
 const BINANCE_TEST_MODE = process.env.BINANCE_TEST_MODE === 'true';
+console.log('BINANCE_TEST_MODE', BINANCE_TEST_MODE);
 
 binance.options({
     APIKEY: BINANCE_API_KEY,
@@ -18,7 +19,9 @@ module.exports = {
     getTradeHistoryBySymbol,
     getBalance,
     marketBuy,
-    limitSell
+    limitBuy,
+    limitSell,
+    cancelLimitOrder
 }
 
 // Binance API promise wrappers
@@ -98,9 +101,33 @@ function marketBuy(symbol, quantity) {
     });
 }
 
+function limitBuy(symbol, quantity, price) {
+    return new Promise((resolve, rejection) => {
+        binance.buy(symbol, quantity, price, { type: 'LIMIT' }, (error, response) => {
+            if (error) {
+                rejection(error.body);
+                return;
+            }
+            resolve(response);
+        });
+    });
+}
+
 function limitSell(symbol, quantity, price) {
     return new Promise((resolve, rejection) => {
         binance.sell(symbol, quantity, price, { type: 'LIMIT' }, (error, response) => {
+            if (error) {
+                rejection(error.body);
+                return;
+            }
+            resolve(response);
+        });
+    });
+}
+
+function cancelLimitOrder(symbol, orderId) {
+    return new Promise((resolve, rejection) => {
+        binance.cancel(symbol, orderId, (error, response) => {
             if (error) {
                 rejection(error.body);
                 return;

@@ -13,17 +13,73 @@ let messageObservers = [];
 
 module.exports = {
     subscribeForCommand,
+    sendTelegramMessage,
     promptMessage
 }
 
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
 
-    bot.sendMessage(chatId, 'Available commands', {
+    const inlineCommands = [
+        `\n`,
+        `/placeBinanceOrderLimit type symbol qty price`
+    ];
+
+    bot.sendMessage(chatId, 'Available commands:' + inlineCommands.join(`\n`), {
         reply_markup: {
             inline_keyboard: telegramMenu
         }
     });
+});
+
+bot.onText(/\/closeBinanceOrder(\d+)(\w+)/, (msg, match) => {
+    const chatId = msg.chat.id;
+    const orderId = match[1];
+    const symbol = match[2];
+
+    console.log(`chatId ${chatId} orderId ${orderId} symbol ${symbol}`);
+  
+    commandHandler('DELETE_ORDER', chatId, symbol, orderId)
+        .catch((rejection) => {
+            console.log('>> rejection', rejection);
+
+            return sendTelegramMessage(chatId, 'Something went wrong');
+        });
+});
+
+bot.onText(/\/placeBinanceOrderLimit (.+) (.+) (.+) (.+)/, (msg, match) => {
+    const chatId = msg.chat.id;
+    const type = match[1];
+    const symbol = match[2];
+    const qty = match[3];
+    const price = match[4];
+
+    if (!type) {
+        sendTelegramMessage(chatId, 'type is not provided');
+        return;
+    }
+
+    if (!symbol) {
+        sendTelegramMessage(chatId, 'symbol is not provided');
+        return;
+    }
+
+    if (!qty) {
+        sendTelegramMessage(chatId, 'quantity is not provided');
+        return;
+    }
+
+    if (!price) {
+        sendTelegramMessage(chatId, 'price is not provided');
+        return;
+    }
+  
+    commandHandler('PLACE_ORDER_LIMIT', chatId, type, symbol, qty, price)
+        .catch((rejection) => {
+            console.log('>> rejection', rejection);
+
+            return sendTelegramMessage(chatId, 'Something went wrong');
+        });
 });
 
 bot.on('callback_query', (query) => {
@@ -35,12 +91,12 @@ bot.on('callback_query', (query) => {
     }
 
     commandHandler(command, chatId)
-        .then((result) => sendTelegramMessage(chatId, result))
         .catch((rejection) => {
             console.log('>> rejection', rejection);
 
             return sendTelegramMessage(chatId, 'Something went wrong');
-        }).then(() => bot.answerCallbackQuery(query.id));
+        })
+        .then(() => bot.answerCallbackQuery(query.id));
 });
 
 bot.on('message', (message) => {

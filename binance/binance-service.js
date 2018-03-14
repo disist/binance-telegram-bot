@@ -4,12 +4,14 @@ const binance = require('./binance-api-wrapper');
 module.exports = {
     GET_BALANCES: getBinanceBalances,
     GET_CURRENT_EARNINGS: getСurrentEarnings,
-    GET_DETAILED_CURRENT_EARNINGS: getСurrentEarnings.bind(this, null, true),
+    GET_DETAILED_CURRENT_EARNINGS: (chatId) => getСurrentEarnings(chatId, true),
     GET_ACTIVE_ORDERS: getActiveOrders,
-    BUY_SIGNAL: placeBuySignal
+    BUY_SIGNAL: placeBuySignal,
+    PLACE_ORDER_LIMIT: placeOrderLimit,
+    DELETE_ORDER: deleteOrder,
 }
 
-function getBinanceBalances() {
+function getBinanceBalances(chatId) {
     return binance.getBalance()
         .then((balances) => {
             let result = '';
@@ -22,7 +24,7 @@ function getBinanceBalances() {
                 }
             });
 
-            return result;
+            return telegramService.sendTelegramMessage(chatId, result);
         });
 }
 
@@ -85,11 +87,11 @@ function getСurrentEarnings(chatId, detailed) {
                 }
             });
 
-            return result;
+            return telegramService.sendTelegramMessage(chatId, result);
         });
 }
 
-function getActiveOrders() {
+function getActiveOrders(chatId) {
     return binance.getOpenOrders()
         .then((openOrders) => {
             let result = '';
@@ -98,11 +100,26 @@ function getActiveOrders() {
                 const price = Number(order.price);
                 const quantity = Number(order.origQty);
 
-                result += `${order.symbol} ${order.side} Qty: ${quantity} Price: ${price}\n`;
+                result += `${order.symbol} ${order.side} Qty: ${quantity} Price: ${price} /closeBinanceOrder${order.orderId}${order.symbol} \n \n`;
             });
 
-            return result;
+
+            return telegramService.sendTelegramMessage(chatId, result);
         });
+}
+
+function placeOrderLimit(chatId, type, symbol, quantity, price) {
+    symbol = symbol.toUpperCase();
+    // Be sure that symbol ends on BTC
+    symbol = symbol.replace('BTC', '');
+    symbol += 'BTC';
+
+    queryPromise = type.toLowerCase() === 'sell'
+        ? binance.limitSell
+        : binance.limitBuy
+
+    return queryPromise(symbol, quantity, price)
+        .then(() => telegramService.sendTelegramMessage(chatId, 'ok'));
 }
 
 function placeBuySignal(chatId) {
@@ -177,8 +194,12 @@ function placeBuySignal(chatId) {
             }
 
             return Promise.all(takeProfitOrders);
-        })
-        .then(() => 'ok');
+        });
+}
+
+function deleteOrder(chatId, symbol, orderId) {
+    return binance.cancelLimitOrder(symbol, orderId)
+        .then(() => telegramService.sendTelegramMessage(chatId, 'ok'));
 }
 
 function _getTakeProfitLevels(chatId) {

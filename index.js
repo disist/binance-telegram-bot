@@ -3,13 +3,13 @@ const binanceService = require('./binance/binance-service');
 
 require('./server');
 
-telegramService.subscribeForCommand((commandName, chatId) => {
-
+telegramService.subscribeForCommand((commandName, ...args) => {
+    
     if (!binanceService[commandName]) {
         throw(`>> the command "${commandName}" is not exists`);
     }
 
     const queryPromise = binanceService[commandName];
 
-    return queryPromise(chatId);
+    return queryPromise(...args);
 });

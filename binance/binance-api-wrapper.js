@@ -19,9 +19,12 @@ module.exports = {
     getTradeHistoryBySymbol,
     getBalance,
     marketBuy,
+    marketSell,
     limitBuy,
     limitSell,
-    cancelLimitOrder
+    cancelLimitOrder,
+    cancelLimitOrders,
+    watchPrice
 }
 
 // Binance API promise wrappers
@@ -101,6 +104,18 @@ function marketBuy(symbol, quantity) {
     });
 }
 
+function marketSell(symbol, quantity) {
+    return new Promise((resolve, rejection) => {
+        binance.marketSell(symbol, quantity, (error, response) => {
+            if (error) {
+                rejection(error.body);
+                return;
+            }
+            resolve(response);
+        });
+    });
+}
+
 function limitBuy(symbol, quantity, price) {
     return new Promise((resolve, rejection) => {
         binance.buy(symbol, quantity, price, { type: 'LIMIT' }, (error, response) => {
@@ -134,5 +149,33 @@ function cancelLimitOrder(symbol, orderId) {
             }
             resolve(response);
         });
+    });
+}
+
+function cancelLimitOrders(symbol) {
+    return new Promise((resolve, rejection) => {
+        binance.cancelOrders(symbol, (error, response) => {
+            if (error) {
+                rejection(error.body);
+                return;
+            }
+            resolve(response);
+        });
+    });
+}
+
+function watchPrice(symbol, handler) {
+    binance.websockets.trades([symbol], (trades) => {
+        const {
+            e: eventType,
+            E: eventTime,
+            s: symbol,
+            p: price,
+            q: quantity,
+            m: maker,
+            a: tradeId
+        } = trades;
+
+        handler(symbol, price);
     });
 }

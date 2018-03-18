@@ -23,9 +23,15 @@ const processBuySignal = {
     callback_data: 'BUY_SIGNAL'
 }
 
+const helpButton = {
+    text: 'Help',
+    callback_data: 'HELP'
+}
+
 module.exports = [
     [balanceButton],
     [currentEarningsButton, currentDetailedEarningsButton],
     [getOrdersButton],
-    [processBuySignal]
+    [processBuySignal],
+    [helpButton]
 ];

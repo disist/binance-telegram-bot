@@ -20,12 +20,7 @@ module.exports = {
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
 
-    const inlineCommands = [
-        `\n`,
-        `/placeBinanceOrderLimit type symbol qty price`
-    ];
-
-    bot.sendMessage(chatId, 'Available commands:' + inlineCommands.join(`\n`), {
+    bot.sendMessage(chatId, 'Menu:', {
         reply_markup: {
             inline_keyboard: telegramMenu
         }
@@ -38,7 +33,7 @@ bot.onText(/\/closeBinanceOrder(\d+)(\w+)/, (msg, match) => {
     const symbol = match[2];
 
     console.log(`chatId ${chatId} orderId ${orderId} symbol ${symbol}`);
-  
+
     commandHandler('DELETE_ORDER', chatId, symbol, orderId)
         .catch((rejection) => {
             console.log('>> rejection', rejection);
@@ -54,27 +49,38 @@ bot.onText(/\/placeBinanceOrderLimit (.+) (.+) (.+) (.+)/, (msg, match) => {
     const qty = match[3];
     const price = match[4];
 
-    if (!type) {
-        sendTelegramMessage(chatId, 'type is not provided');
+    if (!type || !symbol || !qty || !price) {
+        sendTelegramMessage(chatId, 'Please provide full info');
         return;
     }
 
-    if (!symbol) {
-        sendTelegramMessage(chatId, 'symbol is not provided');
-        return;
-    }
-
-    if (!qty) {
-        sendTelegramMessage(chatId, 'quantity is not provided');
-        return;
-    }
-
-    if (!price) {
-        sendTelegramMessage(chatId, 'price is not provided');
-        return;
-    }
-  
     commandHandler('PLACE_ORDER_LIMIT', chatId, type, symbol, qty, price)
+        .catch((rejection) => {
+            console.log('>> rejection', rejection);
+
+            return sendTelegramMessage(chatId, 'Something went wrong');
+        });
+});
+
+bot.onText(/\/placeVirtualStopLoss (.+) (.+) (.+)/, (msg, match) => {
+    const chatId = msg.chat.id;
+    const symbol = match[1];
+    const qty = match[2];
+    const price = match[3];
+
+    commandHandler('PLACE_VIRTUAL_STOP_LOSS', chatId, symbol, qty, price)
+        .catch((rejection) => {
+            console.log('>> rejection', rejection);
+
+            return sendTelegramMessage(chatId, 'Something went wrong');
+        });
+});
+
+bot.onText(/\/getLatestPrice (.+)/, (msg, match) => {
+    const chatId = msg.chat.id;
+    const symbol = match[1];
+
+    commandHandler('GET_LATEST_PRICE', chatId, symbol)
         .catch((rejection) => {
             console.log('>> rejection', rejection);
 
@@ -88,6 +94,20 @@ bot.on('callback_query', (query) => {
 
     if (!commandHandler) {
         throw ('>> telegram-service >> The commandHandler is not set');
+    }
+
+    if (command === 'HELP') {
+        const inlineCommands = [
+            `\n`,
+            `/placeBinanceOrderLimit type symbol qty price`,
+            '/placeVirtualStopLoss symbol qty price',
+            '/getLatestPrice symbol'
+        ];
+
+        sendTelegramMessage(chatId, 'Available inline commands:' + inlineCommands.join(`\n`))
+            .then(() => bot.answerCallbackQuery(query.id));
+
+        return;
     }
 
     commandHandler(command, chatId)

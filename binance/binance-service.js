@@ -211,12 +211,16 @@ function placeVirtualStopLoss(chatId, symbol, targerQty, price) {
             const balanceSymbol = btcBasedSymbol.replace('BTC', '');
             const availableQty = balances[balanceSymbol].available;
 
+            console.log('>> availableQty', availableQty);
+
             // In a case when available qty greater than target qty we will use target qty
             const qty = availableQty > targerQty
                 ? targerQty
                 : availableQty;
 
             const adjustedQty = ajustQty(btcBasedSymbol, qty);
+
+            console.log('>> adjustedQty', adjustedQty);
 
             return binance.marketSell(btcBasedSymbol, adjustedQty);
         })

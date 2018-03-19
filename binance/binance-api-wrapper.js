@@ -35,7 +35,8 @@ function initBinance() {
         test: BINANCE_TEST_MODE
     });
 
-    // Get and store a current exchange info
+    // Get and store a current binance exchange info
+    // ToDo: Implement updating some time (once a day)
     fetchExchangeInfo()
         .then((exchangeInfo) => binanceExchangeInfo = exchangeInfo);
 }

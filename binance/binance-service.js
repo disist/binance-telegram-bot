@@ -211,16 +211,12 @@ function placeVirtualStopLoss(chatId, symbol, targerQty, price) {
             const balanceSymbol = btcBasedSymbol.replace('BTC', '');
             const availableQty = balances[balanceSymbol].available;
 
-            console.log('>> availableQty', availableQty);
-
             // In a case when available qty greater than target qty we will use target qty
-            const qty = availableQty > targerQty
+            const qty = Number(availableQty) > Number(targerQty)
                 ? targerQty
                 : availableQty;
 
             const adjustedQty = ajustQty(btcBasedSymbol, qty);
-
-            console.log('>> adjustedQty', adjustedQty);
 
             return binance.marketSell(btcBasedSymbol, adjustedQty);
         })
@@ -228,6 +224,12 @@ function placeVirtualStopLoss(chatId, symbol, targerQty, price) {
 
     return Promise.resolve();
 }
+
+// function oneMinuteDelay() {
+//     return new Promise((resolve, rejection) => {
+//         setTimeout(() => resolve(), 60000);
+//     });
+// }
 
 function deleteOrder(chatId, symbol, orderId) {
     return binance.cancelLimitOrder(symbol, orderId)

@@ -208,7 +208,8 @@ function placeVirtualStopLoss(chatId, symbol, targerQty, price) {
         .then(() => binance.cancelLimitOrders(btcBasedSymbol))
         .then(() => binance.getBalance())
         .then((balances) => {
-            const availableQty = balances[btcBasedSymbol].available;
+            const balanceSymbol = btcBasedSymbol.replace('BTC', '');
+            const availableQty = balances[balanceSymbol].available;
 
             // In a case when available qty greater than target qty we will use target qty
             const qty = availableQty > targerQty

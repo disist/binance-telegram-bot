@@ -216,7 +216,9 @@ function placeVirtualStopLoss(chatId, symbol, targerQty, price) {
                 ? targerQty
                 : availableQty;
 
-            return binance.marketSell(btcBasedSymbol, qty);
+            const adjustedQty = ajustQty(btcBasedSymbol, qty);
+
+            return binance.marketSell(btcBasedSymbol, adjustedQty);
         })
         .then(() => telegramService.sendTelegramMessage(chatId, `${btcBasedSymbol} is closed by stop loss at ${price}`));
 
@@ -233,6 +235,20 @@ function getLatestPrice(chatId, symbol) {
 
     return binance.getLatestPriceForSymbol(btcBasedSymbol)
         .then((latestPrice) => telegramService.sendTelegramMessage(chatId, `${btcBasedSymbol} - ${latestPrice}`));
+}
+
+function ajustQty(btcBasedSymbol, inputQty) {
+    const exchangeInfo = binance.getExchangeInfo();
+    const currentSymbolConfig = exchangeInfo.symbols.find((item) => item.symbol === btcBasedSymbol);
+    const currentSymbolLotSize = currentSymbolConfig.filters.find((item) => item.filterType === 'LOT_SIZE');
+
+    const result = binance.roundStep(inputQty, currentSymbolLotSize.stepSize);
+
+    if (result < currentSymbolLotSize.minQty) {
+        throw ('No enough money');
+    }
+
+    return result;
 }
 
 function _getTakeProfitLevels(chatId) {

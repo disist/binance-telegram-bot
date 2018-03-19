@@ -5,12 +5,7 @@ const BINANCE_API_SECRET = process.env.BINANCE_API_SECRET;
 const BINANCE_TEST_MODE = process.env.BINANCE_TEST_MODE === 'true';
 console.log('BINANCE_TEST_MODE', BINANCE_TEST_MODE);
 
-binance.options({
-    APIKEY: BINANCE_API_KEY,
-    APISECRET: BINANCE_API_SECRET,
-    useServerTime: true,
-    test: BINANCE_TEST_MODE
-});
+let binanceExchangeInfo;
 
 module.exports = {
     getOpenOrders,
@@ -24,7 +19,29 @@ module.exports = {
     limitSell,
     cancelLimitOrder,
     cancelLimitOrders,
-    watchPrice
+    watchPrice,
+    getExchangeInfo,
+    roundStep: binance.roundStep.bind(binance)
+}
+
+initBinance();
+
+function initBinance() {
+    // Init binance options
+    binance.options({
+        APIKEY: BINANCE_API_KEY,
+        APISECRET: BINANCE_API_SECRET,
+        useServerTime: true,
+        test: BINANCE_TEST_MODE
+    });
+
+    // Get and store a current exchange info
+    fetchExchangeInfo()
+        .then((exchangeInfo) => binanceExchangeInfo = exchangeInfo);
+}
+
+function getExchangeInfo() {
+    return binanceExchangeInfo;
 }
 
 // Binance API promise wrappers
@@ -177,5 +194,17 @@ function watchPrice(symbol, handler) {
         } = trades;
 
         handler(symbol, price);
+    });
+}
+
+function fetchExchangeInfo() {
+    return new Promise((resolve, rejection) => {
+        binance.exchangeInfo(function(error, data) {
+            if (error) {
+                rejection(error.body);
+                return;
+            }
+            resolve(data);
+        });
     });
 }

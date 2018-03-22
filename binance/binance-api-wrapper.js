@@ -19,7 +19,8 @@ module.exports = {
     limitSell,
     cancelLimitOrder,
     cancelLimitOrders,
-    watchPrice,
+    subscribeOnPriceChange,
+    unsubscribeOnPriceChange,
     getExchangeInfo,
     roundStep: binance.roundStep.bind(binance)
 }
@@ -182,8 +183,8 @@ function cancelLimitOrders(symbol) {
     });
 }
 
-function watchPrice(symbol, handler) {
-    binance.websockets.trades([symbol], (trades) => {
+function subscribeOnPriceChange(symbol, handler) {
+    return binance.websockets.trades([symbol], (trades) => {
         const {
             e: eventType,
             E: eventTime,
@@ -196,6 +197,10 @@ function watchPrice(symbol, handler) {
 
         handler(symbol, price);
     });
+}
+
+function unsubscribeOnPriceChange(identifier) {
+    binance.websockets.terminate(identifier);
 }
 
 function fetchExchangeInfo() {

@@ -32,8 +32,6 @@ bot.onText(/\/closeBinanceOrder(\d+)(\w+)/, (msg, match) => {
     const orderId = match[1];
     const symbol = match[2];
 
-    console.log(`chatId ${chatId} orderId ${orderId} symbol ${symbol}`);
-
     commandHandler('DELETE_ORDER', chatId, symbol, orderId)
         .catch((rejection) => {
             console.log('>> rejection', rejection);

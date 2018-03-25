@@ -22,7 +22,8 @@
     "dotenv": "^5.0.1",
     "node-binance-api": "^0.4.22",
     "node-static": "^0.7.10",
-    "node-telegram-bot-api": "^0.30.0"
+    "node-telegram-bot-api": "^0.30.0",
+    "redis": "^2.8.0"
   },
   "cacheDirectories": [
     "node_modules"

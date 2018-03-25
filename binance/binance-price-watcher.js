@@ -1,5 +1,7 @@
 const binance = require('./binance-api-wrapper');
 
+require('../storage/storage-client');
+
 module.exports = {
     getActiveVirtualOrders,
     whenPriceLessOrEqual,

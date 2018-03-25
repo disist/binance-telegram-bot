@@ -52,21 +52,22 @@ function whenPriceGreaterOrEqual(symbol, levelPrice) {
 
 const storage = require('node-persist');
 
-storage.init()
-    .then(() => {
-        storage.getItem('TEST')
-            .then((value) => {
-                console.log('TEST', value);
+storage.init({
+    dir: './simple-storage',
+}).then(() => {
+    storage.getItem('TEST')
+        .then((value) => {
+            console.log('TEST', value);
 
-                return storage.setItem('TEST', 'it is test message');
-            })
-            .then(() => {
-                return storage.getItem('TEST');
-            })
-            .then((value) => {
-                console.log('TEST', value); 
-            });
+            return storage.setItem('TEST', 'it is test message');
+        })
+        .then(() => {
+            return storage.getItem('TEST');
+        })
+        .then((value) => {
+            console.log('TEST', value);
+        });
 
-        
-        
-    });
+
+
+});

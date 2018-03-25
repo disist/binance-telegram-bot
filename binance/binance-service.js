@@ -1,6 +1,7 @@
 const telegramService = require('../telegram/telegram-service');
 const binance = require('./binance-api-wrapper');
 const binancePriceWatcher = require('./binance-price-watcher');
+const currencyHelper = require('./currency-helper');
 
 module.exports = {
     GET_BALANCES: getBinanceBalances,
@@ -12,6 +13,7 @@ module.exports = {
     PLACE_ORDER_LIMIT: placeOrderLimit,
     PLACE_VIRTUAL_STOP_LOSS: placeVirtualStopLoss,
     DELETE_ORDER: deleteOrder,
+    DELETE_VIRTUAL_ORDER: deleteVirtualOrder,
     GET_LATEST_PRICE: getLatestPrice
 }
 
@@ -83,7 +85,7 @@ function getСurrentEarnings(chatId, detailed) {
                     let inOrderOtyByOrders = 0;
                     let properBuyOrders = [];
                     let index = buyOrders.length - 1;
-                    while(inOrderOtyByOrders < inOrderQty) {
+                    while (inOrderOtyByOrders < inOrderQty) {
                         inOrderOtyByOrders += Number(buyOrders[index].qty);
                         properBuyOrders.push(buyOrders[index]);
                         index--;
@@ -139,7 +141,8 @@ function getActiveOrders(chatId) {
                 const price = Number(order.price);
                 const quantity = Number(order.origQty);
 
-                result += `| ${order.symbol} | ${order.side} | ${quantity} | ${price} \n /closeBinanceOrder${order.orderId}${order.symbol} \n \n`;
+                result += `| ${order.symbol} | ${order.side} | ${quantity} | ${price} \n`;
+                result += `/closeBinanceOrder${order.orderId}${order.symbol} \n \n`;
             });
 
 
@@ -150,22 +153,22 @@ function getActiveOrders(chatId) {
 function getActiveVirtualOrders(chatId) {
     const orders = binancePriceWatcher.getActiveVirtualOrders();
 
-    let result = `| Symbol | Type | Price | \n`;
-    result += '|-------|-----|------| \n';
+    let result = `| Symbol |      Type      |     Price     | \n`;
 
     if (orders.length === 0) {
         return telegramService.sendTelegramMessage(chatId, `You don't have virtual orders`);
     }
 
     orders.forEach((order) => {
-        result += `| ${order.symbol} | ${order.type} | ${order.price}`
+        result += `| ${order.symbol} | ${order.type} | ${order.price} | \n`;
+        result += `/closeVirtualOrder${order.id} \n \n`;
     });
 
     return telegramService.sendTelegramMessage(chatId, result);
 }
 
 function placeOrderLimit(chatId, type, symbol, quantity, price) {
-    const btcBasedSymbol = _getBTCBasedSymbol(symbol);
+    const btcBasedSymbol = currencyHelper.getBTCBasedSymbol(symbol);
 
     const queryPromise = type.toLowerCase() === 'sell'
         ? binance.limitSell
@@ -200,7 +203,7 @@ function placeBuySignal(chatId) {
         })
         .then((symbol) => {
             signalSymbol = symbol.toUpperCase();
-            signalSymbolWithBTC = _getBTCBasedSymbol(signalSymbol);
+            signalSymbolWithBTC = currencyHelper.getBTCBasedSymbol(signalSymbol);
 
             return binance.getLatestPriceForSymbol(signalSymbolWithBTC);
         })
@@ -255,47 +258,27 @@ function placeBuySignal(chatId) {
             return Promise.all(takeProfitOrders);
         })
         .then(() => telegramService.promptMessage(chatId, `Please specify Stop Loss`))
-        .then((stopLossPrice) => placeVirtualStopLoss(chatId, signalSymbolWithBTC, symbolQty, stopLossPrice))
+        .then((stopLossPrice) => binancePriceWatcher.placeVirtualStopLoss(chatId, signalSymbolWithBTC, symbolQty, stopLossPrice))
         .then(() => telegramService.sendTelegramMessage(chatId, 'ok'));
 }
 
 function placeVirtualStopLoss(chatId, symbol, targerQty, price) {
-    const btcBasedSymbol = _getBTCBasedSymbol(symbol);
-
-    binancePriceWatcher.whenPriceLessOrEqual(btcBasedSymbol, price)
-        .then(() => binance.cancelLimitOrders(btcBasedSymbol))
-        .then(() => binance.getBalance())
-        .then((balances) => {
-            const balanceSymbol = btcBasedSymbol.replace('BTC', '');
-            const availableQty = balances[balanceSymbol].available;
-
-            // In a case when available qty greater than target qty we will use target qty
-            const qty = Number(availableQty) > Number(targerQty)
-                ? targerQty
-                : availableQty;
-
-            const adjustedQty = ajustQty(btcBasedSymbol, qty);
-
-            return binance.marketSell(btcBasedSymbol, adjustedQty);
-        })
-        .then(() => telegramService.sendTelegramMessage(chatId, `${btcBasedSymbol} is closed by stop loss at ${price}`));
-
-    return Promise.resolve(null);
+    return binancePriceWatcher.placeVirtualStopLoss(chatId, symbol, targerQty, price)
+        .then(() => telegramService.sendTelegramMessage(chatId, 'ok'));
 }
-
-// function oneMinuteDelay() {
-//     return new Promise((resolve, rejection) => {
-//         setTimeout(() => resolve(), 60000);
-//     });
-// }
 
 function deleteOrder(chatId, symbol, orderId) {
     return binance.cancelLimitOrder(symbol, orderId)
         .then(() => telegramService.sendTelegramMessage(chatId, 'ok'));
 }
 
+function deleteVirtualOrder(chatId, orderId) {
+    return binancePriceWatcher.closeVirtualOrder(orderId)
+        .then(() => telegramService.sendTelegramMessage(chatId, 'ok'));
+}
+
 function getLatestPrice(chatId, symbol) {
-    const btcBasedSymbol = _getBTCBasedSymbol(symbol);
+    const btcBasedSymbol = currencyHelper.getBTCBasedSymbol(symbol);
 
     return binance.getLatestPriceForSymbol(btcBasedSymbol)
         .then((latestPrice) => telegramService.sendTelegramMessage(chatId, `${btcBasedSymbol} - ${latestPrice}`));
@@ -325,6 +308,11 @@ function _getTakeProfitLevels(chatId) {
 
         return telegramService.promptMessage(chatId, `Please specify ${level} level of Take Profit, "none" or "n" for end`)
             .then((result) => {
+                if (isNaN(parseFloat(result))) {
+                    return telegramService.sendTelegramMessage(chatId, `Incorrect price, let's try again`)
+                        .then(() => askLevel(--level));
+                }
+
                 if (result !== 'none' && result !== 'n') {
                     takeProfitLevels.push(result);
 
@@ -338,33 +326,4 @@ function _getTakeProfitLevels(chatId) {
                 return Promise.resolve(takeProfitLevels);
             });
     }
-}
-
-function _normalizeQty(quantity) {
-    quantity = Number(quantity);
-
-    if (quantity > 100) {
-        quantity = Number(quantity.toFixed(0));
-    }
-
-    if (quantity > 10) {
-        quantity = Number(quantity.toFixed(2));
-    }
-
-    if (quantity > 1) {
-        quantity = Number(quantity.toFixed(3));
-    }
-
-    quantity = Number(quantity.toFixed(5));
-
-    return quantity;
-}
-
-function _getBTCBasedSymbol(symbol) {
-    symbol = symbol.toUpperCase();
-    // Be sure that symbol ends on BTC
-    symbol = symbol.replace('BTC', '');
-    symbol += 'BTC';
-
-    return symbol;
 }

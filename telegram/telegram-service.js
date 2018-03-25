@@ -40,6 +40,18 @@ bot.onText(/\/closeBinanceOrder(\d+)(\w+)/, (msg, match) => {
         });
 });
 
+bot.onText(/\/closeVirtualOrder(\d+)/, (msg, match) => {
+    const chatId = msg.chat.id;
+    const orderId = match[1];
+
+    commandHandler('DELETE_VIRTUAL_ORDER', chatId, orderId)
+        .catch((rejection) => {
+            console.log('>> rejection', rejection);
+
+            return sendTelegramMessage(chatId, 'Something went wrong');
+        });
+});
+
 bot.onText(/\/placeBinanceOrderLimit (.+) (.+) (.+) (.+)/, (msg, match) => {
     const chatId = msg.chat.id;
     const type = match[1];

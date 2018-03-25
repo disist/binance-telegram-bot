@@ -36,11 +36,16 @@ function getBinanceBalances(chatId) {
 function getСurrentEarnings(chatId, detailed) {
     let inOrderCurrencies = new Set();
     let latestPrices;
+    let openOrders;
 
     return binance.getOpenOrders()
-        .then((openOrders) => {
-            openOrders.forEach((currency) => {
-                inOrderCurrencies.add(currency.symbol);
+        .then((orders) => {
+            openOrders = orders;
+
+            orders.forEach((order) => {
+                if (order.side === 'SELL') {
+                    inOrderCurrencies.add(order.symbol);
+                }
             });
 
             return binance.getLatestPrices();
@@ -55,7 +60,9 @@ function getСurrentEarnings(chatId, detailed) {
             return Promise.all(tradeHistoriesPromises);
         })
         .then((tradeHistories) => {
-            let result = '';
+            let result = detailed
+                ? `| Symbol | PurchasePrice | CurrentPrice |    Δ    | \n`
+                : '';
 
             inOrderCurrencies.forEach((currencyCode) => {
                 if (latestPrices[currencyCode]) {
@@ -64,21 +71,39 @@ function getСurrentEarnings(chatId, detailed) {
                     const tradeHistory = tradeHistories.find((history) => history.symbol === currencyCode);
                     const buyOrders = tradeHistory.trades.filter((order) => order.isBuyer);
 
+                    // In case of older history orders by this symbol,
+                    // we should find the last orders when the purchase was made
+                    const inOrderQty = openOrders.reduce((prev, curr) => {
+                        if (curr.symbol === currencyCode) {
+                            return prev + Number(curr.origQty);
+                        }
+                        return prev;
+                    }, 0);
+
+                    let inOrderOtyByOrders = 0;
+                    let properBuyOrders = [];
+                    let index = buyOrders.length - 1;
+                    while(inOrderOtyByOrders < inOrderQty) {
+                        inOrderOtyByOrders += Number(buyOrders[index].qty);
+                        properBuyOrders.push(buyOrders[index]);
+                        index--;
+                    }
+                    //--
+
                     let purchasePrice;
 
-                    if (buyOrders.length === 1) {
-                        purchasePrice = Number(buyOrders[0].price);
+                    if (properBuyOrders.length === 1) {
+                        purchasePrice = Number(properBuyOrders[0].price);
                     }
 
-                    if (buyOrders.length > 1) {
-                        // In case of may buy orders we reduce purchasePrice by next formula 
+                    if (properBuyOrders.length > 1) {
+                        // In case of many buy orders we reduce purchasePrice by next formula 
                         // purchasePrice = ( (qty * price)1st + (qty * price)2nd ...) / all qty
-
                         let priceMultiplyQty = 0;
                         let allQty = 0;
-                        for (let i = 0; i < buyOrders.length; i++) {
-                            priceMultiplyQty += buyOrders[i].price * buyOrders[i].qty;
-                            allQty += Number(buyOrders[i].qty);
+                        for (let i = 0; i < properBuyOrders.length; i++) {
+                            priceMultiplyQty += properBuyOrders[i].price * properBuyOrders[i].qty;
+                            allQty += Number(properBuyOrders[i].qty);
                         }
 
                         purchasePrice = Number((priceMultiplyQty / allQty).toFixed(8));
@@ -87,7 +112,7 @@ function getСurrentEarnings(chatId, detailed) {
                     const delta = (currentPrice - purchasePrice) / purchasePrice * 100;
 
                     result += detailed
-                        ? `${currencyCode}: PurchasePrice: ${purchasePrice}: CurrentPrice: ${currentPrice}: Δ: ${delta.toFixed(2)}%\n`
+                        ? `| ${currencyCode} | ${purchasePrice} | ${currentPrice} | ${delta.toFixed(2)}% |\n`
                         : `${currencyCode}: Δ: ${delta.toFixed(1)}%\n`;
                 }
             });
@@ -151,7 +176,7 @@ function placeOrderLimit(chatId, type, symbol, quantity, price) {
 }
 
 function placeBuySignal(chatId) {
-    const ONE_ORDER_BTC_QTY = 0.005;
+    const ONE_ORDER_BTC_QTY = 0.009;
 
     let signalSymbol;
     let signalSymbolWithBTC;

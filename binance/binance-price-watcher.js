@@ -54,17 +54,17 @@ const storage = require('node-persist');
 
 storage.init()
     .then(() => {
-        storage.setItem('TEST', 'it is test message')
-            .then(() => {
-                return storage.getItem('TEST');
-            })
-            .then((value) => {
-                console.log('TEST', value); 
-            });
-
-        
-        // storage.getItem('TEST')
+        // storage.setItem('TEST', 'it is test message')
+        //     .then(() => {
+        //         return storage.getItem('TEST');
+        //     })
         //     .then((value) => {
         //         console.log('TEST', value); 
         //     });
+
+        
+        storage.getItem('TEST')
+            .then((value) => {
+                console.log('TEST', value); 
+            });
     });

@@ -1,6 +1,7 @@
 const binance = require('./binance-api-wrapper');
+const storage = require('../storage/storage-service');
 
-require('../storage/storage-client');
+const ACTIVE_VIRTUAL_ORDERS_KEY = 'ACTIVE_VIRTUAL_ORDERS';
 
 module.exports = {
     getActiveVirtualOrders,
@@ -9,6 +10,17 @@ module.exports = {
 }
 
 let activeVirtualOrders = [];
+
+init();
+
+function init() {
+    storage.getObject(ACTIVE_VIRTUAL_ORDERS_KEY)
+        .then((value) => {
+            if (Array.isArray(value)) {
+                activeVirtualOrders = value;
+            }
+        });
+}
 
 function getActiveVirtualOrders() {
     return activeVirtualOrders;
@@ -30,6 +42,8 @@ function whenPriceLessOrEqual(symbol, levelPrice) {
             type: 'whenPriceLessOrEqual',
             price: levelPrice
         });
+
+        storage.setObject(ACTIVE_VIRTUAL_ORDERS_KEY, activeVirtualOrders);
     });
 }
 
@@ -49,5 +63,7 @@ function whenPriceGreaterOrEqual(symbol, levelPrice) {
             type: 'whenPriceGreaterOrEqual',
             price: levelPrice
         });
+
+        storage.setObject(ACTIVE_VIRTUAL_ORDERS_KEY, activeVirtualOrders);
     });
 }

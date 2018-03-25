@@ -42,11 +42,10 @@ function getСurrentEarnings(chatId, detailed) {
 
     return binance.getOpenOrders()
         .then((orders) => {
-            openOrders = orders;
-
-            orders.forEach((order) => {
+            openOrders = orders.filter((order) => {
                 if (order.side === 'SELL') {
                     inOrderCurrencies.add(order.symbol);
+                    return true;
                 }
             });
 

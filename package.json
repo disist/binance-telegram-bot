@@ -24,5 +24,9 @@
     "node-persist": "^2.1.0",
     "node-static": "^0.7.10",
     "node-telegram-bot-api": "^0.30.0"
-  }
+  },
+  "cacheDirectories": [
+    "node_modules",
+    ".node-persist"
+  ]
 }

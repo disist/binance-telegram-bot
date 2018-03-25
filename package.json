@@ -27,6 +27,6 @@
   },
   "cacheDirectories": [
     "node_modules",
-    ".node-persist"
+    ".node-persist/storage"
   ]
 }

@@ -66,7 +66,8 @@ storage.init({
         })
         .then((value) => {
             console.log('TEST', value);
-        });
+        })
+        .catch((rejection) => console.log('rejection', rejection));
 
 
 

@@ -166,6 +166,7 @@ function getActiveVirtualOrders(chatId) {
     return telegramService.sendTelegramMessage(chatId, result);
 }
 
+//TODO: Check that price in range 100 - 150%
 function placeOrderLimit(chatId, type, symbol, quantity, price) {
     const btcBasedSymbol = currencyHelper.getBTCBasedSymbol(symbol);
 
@@ -307,22 +308,22 @@ function _getTakeProfitLevels(chatId) {
 
         return telegramService.promptMessage(chatId, `Please specify ${level} level of Take Profit, "none" or "n" for end`)
             .then((result) => {
-                if (isNaN(parseFloat(result))) {
-                    return telegramService.sendTelegramMessage(chatId, `Incorrect price, let's try again`)
-                        .then(() => askLevel(--level));
-                }
-
-                if (result !== 'none' && result !== 'n') {
-                    takeProfitLevels.push(result);
-
-                    return askLevel(level);
+                if (result === 'none' || result === 'n') {
+                    return Promise.resolve(takeProfitLevels);
                 }
 
                 if (result === 'exit') {
                     return Promise.reject('exit');
                 }
 
-                return Promise.resolve(takeProfitLevels);
+                if (isNaN(parseFloat(result))) {
+                    return telegramService.sendTelegramMessage(chatId, `Incorrect price, let's try again`)
+                        .then(() => askLevel(--level));
+                }
+
+                takeProfitLevels.push(result);
+
+                return askLevel(level);
             });
     }
 }
